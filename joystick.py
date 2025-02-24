@@ -41,17 +41,13 @@ class Joystick:
 
 
 if __name__ == "__main__":
-    joystick = Joystick(x_pin=10, y_pin=11, sw_pin=9)
-
+    joystick1 = Joystick(x_pin=13, y_pin=14, sw_pin=12)
+    joystick2 = Joystick(x_pin=16, y_pin=15, sw_pin=17)
     while True:
-        x, y, sw = joystick.read_raw()
-        print("Raw:", x, y, sw)
-
-        x_dir, y_dir, sw_dir = joystick.read_direction()
+        x_dir, y_dir, sw_dir = joystick1.read_direction()
         dir_msg = []
         dir_msg.append("Left" if x_dir < 0 else ("Right" if x_dir > 0 else "CenterX"))
         dir_msg.append("Up" if y_dir < 0 else ("Down" if y_dir > 0 else "CenterY"))
         dir_msg.append("Pressed" if sw_dir == 0 else "NotPressed")
-
         print("Direction:", dir_msg)
         time.sleep(0.3)
