@@ -1,9 +1,11 @@
 import time
 
-import ssd1306
-from machine import Pin, SoftI2C,ADC
-import const
 import machine
+from machine import ADC, Pin, SoftI2C
+
+import const
+import ssd1306
+
 
 class I2CMultiplexer:
     def __init__(self, scl_pin, sda_pin, i2c_addr=0x70):
@@ -13,7 +15,6 @@ class I2CMultiplexer:
     def select_channel(self, channel):
         self.i2c.writeto(self.i2c_addr, bytes([1 << channel]))
         time.sleep_ms(10)
-
 
 
 class Joystick:
@@ -111,24 +112,27 @@ class Player:
         # Draw each action. If selected, wrap it in brackets.
         for i, action in enumerate(actions):
             display_text = f"[{action}]" if i == self.selected_action else action
-            self.oled.text(display_text,
+            self.oled.text(
+                display_text,
                 x_positions[i] - (2 if i == self.selected_action else 0),
                 42,
             )
 
         self.oled.show()
-    def draw_Bet_menu(self,selected):
+
+    def draw_Bet_menu(self, selected):
         time.sleep(0.2)
         self.multiplexer.select_channel(self.channel)
-        Bet_menu_fraction = ["1/2", "1/4","1/8","Amount"]
+        Bet_menu_fraction = ["1/2", "1/4", "1/8", "Amount"]
         self.oled.fill(0)
-        self.oled.text(f"Bet: ${self.bet_turn}", 0,0)
+        self.oled.text(f"Bet: ${self.bet_turn}", 0, 0)
         for i, item in enumerate(Bet_menu_fraction):
             if i == selected:
-                self.oled.text("> " + item, 10,( i+1) * 12)  # Highlighted item
+                self.oled.text("> " + item, 10, (i + 1) * 12)  # Highlighted item
             else:
-                self.oled.text("  " + item, 10, (i+1) * 12)  # Normal item
+                self.oled.text("  " + item, 10, (i + 1) * 12)  # Normal item
         self.oled.show()
+
     def draw_Bet(self):
         selected = 0
         time.sleep(0.2)
@@ -136,31 +140,31 @@ class Player:
         self.draw_Bet_menu(selected)
         while True:
             x_dir, y_dir, sw_val = self.joystick.read_direction()
-            if sw_val == 0 :
+            if sw_val == 0:
                 break
             elif y_dir == -1:
                 selected = (selected - 1) % 4
-                if selected == 0 :
-                    self.bet_turn = self.money/2
-                if selected == 1 :
-                    self.bet_turn = self.money/4
-                if selected == 2 :
-                    self.bet_turn = self.money/8
-                if selected == 3 :
-                    self.bet_turn = 0 
+                if selected == 0:
+                    self.bet_turn = self.money / 2
+                if selected == 1:
+                    self.bet_turn = self.money / 4
+                if selected == 2:
+                    self.bet_turn = self.money / 8
+                if selected == 3:
+                    self.bet_turn = 0
                 self.draw_Bet_menu(selected)
                 time.sleep(0.2)  # Prevent rapid scrolling
             # Move DOWN (Y < 1000)
-            elif y_dir ==1:
+            elif y_dir == 1:
                 selected = (selected + 1) % 4
-                if selected == 0 :
-                    self.bet_turn = self.money/2
-                if selected == 1 :
-                    self.bet_turn = self.money/4
-                if selected == 2 :
-                    self.bet_turn = self.money/8
-                if selected == 3 :
-                    self.bet_turn = 0 
+                if selected == 0:
+                    self.bet_turn = self.money / 2
+                if selected == 1:
+                    self.bet_turn = self.money / 4
+                if selected == 2:
+                    self.bet_turn = self.money / 8
+                if selected == 3:
+                    self.bet_turn = 0
                 self.draw_Bet_menu(selected)
                 time.sleep(0.2)
             else:
@@ -170,22 +174,22 @@ class Player:
             self.bet += self.bet_turn
             self.pod += self.bet_turn
             self.draw_screen(self.pot)
-            
+
         elif selected == 1:
             self.money -= self.bet_turn
             self.bet += self.bet_turn
             self.pod += self.bet_turn
             self.draw_screen(self.pot)
-            
+
         elif selected == 2:
             self.money -= self.bet_turn
             self.bet += self.bet_turn
             self.pod += self.bet_turn
             self.draw_screen(self.pot)
-            
+
         elif selected == 3:
             self.draw_Amount_Bar()
-            
+
     def draw_Amount_Bar(self):
         selected = 0
         time.sleep(0.2)
@@ -197,10 +201,10 @@ class Player:
         decay = 0.9  # Slow down when joystick is neutral
         hold_time = 0  # Tracks how long joystick is held
         last_time = time.ticks_ms()
-        
+
         while True:
             x_dir, y_dir, sw_val = self.joystick.read_direction()
-             # This returns only -1, 0, or 1
+            # This returns only -1, 0, or 1
 
             current_time = time.ticks_ms()
             elapsed = time.ticks_diff(current_time, last_time)
@@ -224,7 +228,7 @@ class Player:
                 hold_time = 0  # Reset hold time
 
             # Round bet_turn to nearest 10
-            self.bet_turn = round(self.bet_turn / 10) * 10  
+            self.bet_turn = round(self.bet_turn / 10) * 10
 
             # Clamp bet amount within valid range
             self.bet_turn = max(0, min(self.bet_turn, self.money))
@@ -235,7 +239,7 @@ class Player:
             self.oled.text(f"Bet: {self.bet_turn}", 40, 20)
 
             # Draw progress bar
-            bar_length = (int(self.bet_turn/self.money*100))
+            bar_length = int(self.bet_turn / self.money * 100)
             self.oled.rect(10, 40, 100, 10, 1)  # Outline of bar
             self.oled.fill_rect(10, 40, bar_length, 10, 1)  # Fill bar
 
@@ -248,35 +252,37 @@ class Player:
                 self.bet += self.bet_turn
                 self.pod += self.bet_turn
                 break
-            if y_dir==-1 :
+            if y_dir == -1:
                 break
         self.draw_screen(self.pot)
-    def draw_confirm_fold_menu(self,selected):
+
+    def draw_confirm_fold_menu(self, selected):
         time.sleep(0.2)
         self.oled.fill(0)
         self.multiplexer.select_channel(self.channel)
         fold_options = ["Confirm", "Cancel"]
-        self.oled.text(f"Are You Sure", 0,0)
+        self.oled.text(f"Are You Sure", 0, 0)
         for i, item in enumerate(fold_options):
             if i == selected:
-                self.oled.text("> " + item, 10,( i+1) * 12)  # Highlighted item
+                self.oled.text("> " + item, 10, (i + 1) * 12)  # Highlighted item
             else:
-                self.oled.text("  " + item, 10, (i+1) * 12)  # Normal item
+                self.oled.text("  " + item, 10, (i + 1) * 12)  # Normal item
         self.oled.show()
+
     def draw_fold(self):
         time.sleep(0.2)
         self.oled.fill(0)
         self.multiplexer.select_channel(self.channel)
-        self.oled.text("YOU HAVE",30,20)
-        self.oled.text("FOLDED",45,40)
+        self.oled.text("YOU HAVE", 30, 20)
+        self.oled.text("FOLDED", 45, 40)
         self.oled.show()
         time.sleep(0.2)
         while True:
             x_dir, y_dir, sw_val = self.joystick.read_direction()
-            if sw_val == 0 :
+            if sw_val == 0:
                 break
         self.draw_screen(self.pot)
-    
+
     def draw_confirm_fold(self):
         time.sleep(0.2)
         self.oled.fill(0)
@@ -284,7 +290,7 @@ class Player:
         self.multiplexer.select_channel(self.channel)
         self.draw_confirm_fold_menu(selected)
         while True:
-            
+
             x_dir, y_dir, sw_val = self.joystick.read_direction()
             print(self.joystick.read_direction())
             if sw_val == 0:
@@ -301,7 +307,6 @@ class Player:
             self.draw_fold()
         if selected == 1:
             self.draw_screen(self.pot)
-
 
     def update_action(self):
         x_dir, _, sw_val = self.joystick.read_direction()
@@ -323,31 +328,31 @@ class Player:
             elif selected_action == "Fold":
                 self.draw_confirm_fold()
             return selected_action
-            
+
         return None
-    
+
 
 def get_poker_positions(num_players):
     if num_players < 2 or num_players > 10:
         raise ValueError("Poker requires 2-10 players.")
 
-    positions = ["SB", "BB"] 
+    positions = ["SB", "BB"]
 
     if num_players >= 3:
-        positions.append("UTG") 
+        positions.append("UTG")
 
     if num_players >= 4:
         positions.append("MP1")
-    
+
     if num_players >= 5:
-        positions.append("MP2") 
-    
+        positions.append("MP2")
+
     if num_players >= 6:
-        positions.append("HJ")  
-    
+        positions.append("HJ")
+
     if num_players >= 7:
-        positions.append("CO") 
-    
+        positions.append("CO")
+
     positions.append("BTN")
 
     seat_positions = {}
@@ -362,13 +367,20 @@ if __name__ == "__main__":
     num_players = 4
     positions = get_poker_positions(num_players)
     players = [
-        Player(multiplexer, channel=0, joystick_pins=(14, 13, 12), position=positions[0]),
-        Player(multiplexer, channel=1, joystick_pins=(15, 16, 17), position=positions[1]),
-        Player(multiplexer, channel=2, joystick_pins=(15, 16, 17), position=positions[2]),
-        Player(multiplexer, channel=3, joystick_pins=(15, 16, 17), position=positions[3]),
+        Player(
+            multiplexer, channel=0, joystick_pins=(14, 13, 12), position=positions[0]
+        ),
+        Player(
+            multiplexer, channel=1, joystick_pins=(15, 16, 17), position=positions[1]
+        ),
+        Player(
+            multiplexer, channel=2, joystick_pins=(15, 16, 17), position=positions[2]
+        ),
+        Player(
+            multiplexer, channel=3, joystick_pins=(15, 16, 17), position=positions[3]
+        ),
     ]
 
-    
     while True:
         for player in players:
             player.update_action()
