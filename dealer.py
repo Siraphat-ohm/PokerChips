@@ -23,32 +23,18 @@ TOPIC_LIGHT = f'{TOPIC_PREFIX}/light'
 TOPIC_LED_RED = f'{TOPIC_PREFIX}/led/red'
 TOPIC_BIGBLIND = f'{TOPIC_PREFIX}/bigblind'
 TOPIC_POD = f'{TOPIC_PREFIX}/pod'
+TOPIC_PLAYER = f'{TOPIC_PREFIX}/player'
 keypad = [
     ['1', '2', '3', 'A'],
     ['4', '5', '6', 'B'],
     ['7', '8', '9', 'C'],
     ['*', '0', '#', 'D']
 ]
-listgamestart=[0,0]
+listgamestart=[0,0,0]
 
 # Define row and column pins
 row_pins = [Pin(15, Pin.OUT),Pin(16, Pin.OUT),Pin(17, Pin.OUT),Pin(18, Pin.OUT)]
 col_pins = [Pin(8, Pin.IN, Pin.PULL_DOWN),Pin(3, Pin.IN, Pin.PULL_DOWN),Pin(46, Pin.IN, Pin.PULL_DOWN),Pin(9, Pin.IN, Pin.PULL_DOWN)]
-
-def scan_keypad():
-    ans =""
-    while amount != "D":
-        for row_index, row in enumerate(row_pins):
-            row.value(1)  # Set current row HIGH
-            for col_index, col in enumerate(col_pins):
-                if col.value() == 1:  # If column is HIGH, key is pressed
-                    amount = keypad[row_index][col_index]
-                    sleep(0.3)  # Debounce delay
-            row.value(0)  # Reset row to LOW
-        ans = ans + amount
-    return ans
-        
-        
 
 def connect_wifi():
     mac = ':'.join(f'{b:02X}' for b in wifi.config('mac'))
@@ -72,30 +58,44 @@ def connect_mqtt():
 
 
 def games_start():
-    text =['Enter big blind amount','Enter pod']
-    for i in range (2):
+    display.text("POKERCHIP", 25, 25,1)
+    display.text("dealer", 35, 40, 1)
+    display.show()
+    sleep(1.5)
+    text =['Enter big blind amount','Enter pod','Enter player']
+    for i in range (3):
         display.fill(0)
         display.show()
         ans =""
         amount =""
+        charlist =['A','B','C','D','#','*']
         while amount != "D":
             amount =""
             display.text(text[i], 0, 0, 1)
-            display.text(ans, 10, 10, 1)
+            display.text(">>"+ans, 0, 15, 1)
+            display.text('D:Enter C:delete', 0, 55, 1)
             display.show()
             for row_index, row in enumerate(row_pins):
                 row.value(1)  # Set current row HIGH
                 for col_index, col in enumerate(col_pins):
                     if col.value() == 1:  # If column is HIGH, key is pressed
                         amount = keypad[row_index][col_index]
-                        sleep(0.3)  # Debounce delay
+                        sleep(0.1)  # Debounce delay
                 row.value(0)  # Reset row to LOW
-            ans = ans + amount
+            if amount not in charlist:
+                ans = ans + amount
+            if amount == "C":
+                ans = ans[0:len(ans)-1]
+                display.fill(0)
+                display.show()
         listgamestart[i] = ans
         print('round done')
-        
-
-        
+    display.fill(0)
+    display.show()
+    display.text("POKERCHIP", 25, 25,1)
+    display.text("dealer", 35, 40, 1)
+    display.show()
+               
 games_start()
     
 
@@ -125,11 +125,4 @@ while True:
     mqtt.check_msg()
     mqtt.publish(TOPIC_BIGBLIND, listgamestart[0])
     mqtt.publish(TOPIC_POD, listgamestart[1])
-
-    # publish light value periodically (without using sleep)
-    now = time.ticks_ms()
-    if now - last_publish >= 2000:
-        level = 100 - int(ldr.read()*100/4095)
-        print(f'Publishing light value: {level}')
-        mqtt.publish(TOPIC_LIGHT, str(level))
-        last_publish = now
+    mqtt.publish(TOPIC_PLAYER, listgamestart[2])
