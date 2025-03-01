@@ -1,7 +1,8 @@
 import time
 
-import ssd1306
 from machine import ADC, Pin, SoftI2C
+
+import ssd1306
 
 i2c = SoftI2C(scl=Pin(9), sda=Pin(8))
 

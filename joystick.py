@@ -20,7 +20,7 @@ class Joystick:
         sw_val = self.sw_pin.value()
         return (x_val, y_val, sw_val)
 
-    def read_direction(self, center=2048, deadzone=300):
+    def read_direction(self, center=1900, deadzone=300):
         x_val, y_val, sw_val = self.read_raw()
 
         if x_val < center - deadzone:
@@ -41,8 +41,7 @@ class Joystick:
 
 
 if __name__ == "__main__":
-    joystick1 = Joystick(x_pin=13, y_pin=14, sw_pin=12)
-    joystick2 = Joystick(x_pin=16, y_pin=15, sw_pin=17)
+    joystick1 = Joystick(x_pin=15, y_pin=16, sw_pin=44)
     while True:
         x_dir, y_dir, sw_dir = joystick1.read_direction()
         dir_msg = []

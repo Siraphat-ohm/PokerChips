@@ -15,6 +15,5 @@ def i2c_scan(i2c):
 
 
 if __name__ == "__main__":
-    i2c = SoftI2C(scl=Pin(const.I2C_SCL_PIN), sda=Pin(const.I2C_SDA_PIN))
+    i2c = SoftI2C(scl=Pin(const.SCL_PIN), sda=Pin(const.SDA_PIN))
     i2c_scan(i2c)
-
