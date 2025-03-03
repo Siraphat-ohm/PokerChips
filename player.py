@@ -43,11 +43,12 @@ class Player:
         self.money = money
 
     def draw_screen(self, pot, highest_bet=0, active=False):
+        time.sleep(0.2)
         self.pot = pot
         self.multiplexer.select_channel(self.channel)
         if self.fold:
             self.draw_fold()
-            return "Fold"
+            return "Fold",0
 
         if active:
             if highest_bet == 0:
@@ -60,6 +61,7 @@ class Player:
             selected = 0
 
             while active:
+                time.sleep(0.1)
                 self.oled.fill(0)
                 self.oled.text(f"{self.position}: ${self.money}", 0, 0)
                 self.oled.text(f"Pot: ${pot}", 0, 10)
@@ -71,13 +73,15 @@ class Player:
                     self.oled.text(prefix + action, 0, 35 + (i * 10))
 
                 self.oled.show()
-
                 _, y_dir, sw_val = self.joystick.read_direction()
 
                 if sw_val == 0:
-                    if self.actions[selected] in ("Bet", "Raise"):
-                        self.draw_bet()
-                        return "Bet"
+                    if self.actions[selected] in ( "Bet" , "Raise"):
+                        self.draw_bet(highest_bet)
+                        return self.actions[selected], self.bet
+                    elif self.actions[selected] == "Raise":
+                        self.draw_bet(highest_bet)
+                        return self.actions[selected], self.bet
                     elif self.actions[selected] == "Call":
                         call_amount = highest_bet - self.bet
                         if call_amount > 0:
@@ -85,13 +89,13 @@ class Player:
                             self.money -= call_amount
                             self.bet += call_amount
                             self.pot += call_amount
-                        return "Call"
+                        return "Call", call_amount
                     elif self.actions[selected] == "Check":
-                        return "Check"
+                        return self.actions[selected],0
                     else:
                         if self.draw_confirm():
                             self.draw_fold()
-                            return "Fold"
+                            return self.actions[selected], 0
                             # break
 
                 elif y_dir == -1:
@@ -108,6 +112,7 @@ class Player:
             self.oled.show()
 
     def draw_fold(self):
+        time.sleep(0.1)
         self.multiplexer.select_channel(self.channel)
         self.oled.fill(0)
         self.oled.text("YOU HAVE", 30, 20)
@@ -116,10 +121,12 @@ class Player:
         self.fold = True
 
     def draw_confirm(self, message="Are You Sure?"):
+        time.sleep(0.1)
         selected = 0
         options = ["Confirm", "Cancel"]
 
         while True:
+            time.sleep(0.1)
             self.oled.fill(0)
             self.multiplexer.select_channel(self.channel)
             self.oled.text(message, 0, 0)
@@ -135,6 +142,7 @@ class Player:
             selected = (selected + y_dir) % 2
 
     def draw_bet(self, min_raise=0):
+        time.sleep(0.1)
         self.multiplexer.select_channel(self.channel)
 
         current_bet = min(max(min_raise, 0), self.money)
@@ -148,6 +156,7 @@ class Player:
         last_time = time.ticks_ms()
 
         while True:
+            time.sleep(0.1)
             x_dir, _, sw_val = self.joystick.read_direction()
             current_time = time.ticks_ms()
             elapsed = time.ticks_diff(current_time, last_time)
@@ -192,6 +201,7 @@ class Player:
                     self.bet += current_bet
                     self.pot += current_bet
                     break
+                    
 
         self.draw_screen(self.pot)
 
@@ -202,4 +212,5 @@ if __name__ == "__main__":
     player.set_position("SB")
     player.set_money(1000)
     while True:
-        player.draw_screen(40, active=True)
+        player.draw_screen(40, highest_bet=20, active=True)
+
