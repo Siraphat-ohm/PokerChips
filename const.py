@@ -1,6 +1,8 @@
 PLAYER_CONFIG = [
-    {"joystick_pins": (14, 13, 12), "channel": 0},
-    {"joystick_pins": (15, 16, 17), "channel": 1},
+    {"joystick_pins": (0,1,3), "channel": 0},
+    {"joystick_pins": (2,3,17), "channel": 1},
+    {"joystick_pins": (4,5,7), "channel": 2},
+    {"joystick_pins": (6,7,5), "channel": 3},
 ]
 
 I2C_ADDR = 0x70
