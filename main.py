@@ -8,4 +8,10 @@ from poker import PokerGame
 multiplexer = I2CMultiplexer(const.SCL_PIN, const.SDA_PIN)
 
 
-game = PokerGame(money=1000, multiplexer=multiplexer, sb=10, bb=20)
+game = PokerGame(money=10000, multiplexer=multiplexer, sb=10, bb=20)
+
+for conf in const.PLAYER_CONFIG:
+    print(conf)
+    game.add_player(Player(multiplexer, conf['channel'], conf['joystick_pins']))
+    
+game.run_full_game()
