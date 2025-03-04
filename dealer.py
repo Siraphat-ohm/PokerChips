@@ -11,22 +11,26 @@ from umqtt.simple import MQTTClient
 import ssd1306
 from machine import SoftI2C
 import ssd1306
+import json
 
 
 
 # using default address 0x3C
 i2c = SoftI2C(sda=Pin(48), scl=Pin(47))
 display = ssd1306.SSD1306_I2C(128, 64, i2c)
+TOPIC_TEST = f'{TOPIC_PREFIX}/test'
+TOPIC_SMALLBLIND = f'{TOPIC_PREFIX}/smallblind'
 TOPIC_BIGBLIND = f'{TOPIC_PREFIX}/bigblind'
 TOPIC_MONEY = f'{TOPIC_PREFIX}/money'
 TOPIC_PLAYER = f'{TOPIC_PREFIX}/player'
+TOPIC_SETTINGTABLE = f'{TOPIC_PREFIX}/setting_table'
 keypad = [
     ['1', '2', '3', 'A'],
     ['4', '5', '6', 'B'],
     ['7', '8', '9', 'C'],
     ['*', '0', '#', 'D']
 ]
-listgamestart=[0,0,0]
+listgamestart=[0,0]
 
 # Define row and column pins
 row_pins = [Pin(15, Pin.OUT),Pin(16, Pin.OUT),Pin(17, Pin.OUT),Pin(18, Pin.OUT)]
@@ -72,16 +76,13 @@ def blankpage():
 
 def games_start():
     pokerchippage()
-    sleep(1.5)
+    sleep(1)
     text =[' Enter bigblind',' Enter money',' Enter player']
     i=-1
-    ll = False
-    lastlist =[0,0,0]
     while any(x == 0 for x in listgamestart):
         i+=1
         display.fill(0)
         ans =""
-        amount =""
         charlist =['A','B','C','D','#','*']
         check = True
         while check == True:
@@ -121,9 +122,7 @@ def games_start():
                         if int(ans) < int(listgamestart[0]):
                             blankpage()
                             i=0
-                            lastlist = [listgamestart[0],listgamestart[1],ans]
                             ans =""
-                            ll =True
                             listgamestart[0] =0
                             listgamestart[1] =0
                             continue
@@ -134,8 +133,6 @@ def games_start():
     display.fill(0)
     pokerchippage()
                
-games_start()
-    
 def mqtt_callback(topic, payload):
     if topic.decode() == TOPIC_LED_RED:
         try:
@@ -151,15 +148,21 @@ mqtt = MQTTClient(client_id='',
 connect_wifi()
 connect_mqtt()
 last_publish = 0
+textt = "1000,ongame,smallblind"
+mqtt.publish(TOPIC_TEST, textt)
+
+games_start()
 
 mqtt.publish(TOPIC_BIGBLIND, str(int(listgamestart[0])))
+mqtt.publish(TOPIC_SMALLBLIND, str(int(int(listgamestart[0])/2)))
 mqtt.publish(TOPIC_MONEY, str(int(listgamestart[1])))
-mqtt.publish(TOPIC_PLAYER, str(int(listgamestart[2])))
+mqtt.publish(TOPIC_SETTINGTABLE, "["+str(int(listgamestart[0]))+","+str(int(listgamestart[1]))+"]")
 
 
 
-#while True:
-#    mqtt.check_msg()
+while True:
+    mqtt.check_msg()
+    
 #if ans playerlastround player = [sd,sd,s,ds,] amount=[sd,sd,sd,sd,sd]
 
 def arrangesidepot(amount,player):
