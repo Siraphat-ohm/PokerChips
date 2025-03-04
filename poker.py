@@ -1,5 +1,5 @@
-import const
 from player import I2CMultiplexer, Player
+
 
 class PokerGame:
     POSITIONS = ["SB", "BB", "UTG", "MP1", "MP2", "HJ", "CO", "BTN"]
@@ -168,11 +168,10 @@ class PokerGame:
         self.betting_round(
             start_index=(self.d_pos + 1) % len(self.players), round_name="River"
         )
+
         if self.check_if_one_player_left():
             self.award_pots()
             self.clean_up_for_next_hand()
             return
-
-        self.award_pots()
 
         self.clean_up_for_next_hand()
