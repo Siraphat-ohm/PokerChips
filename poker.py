@@ -1,7 +1,6 @@
 import const
 from player import I2CMultiplexer, Player
 
-
 class PokerGame:
     POSITIONS = ["SB", "BB", "UTG", "MP1", "MP2", "HJ", "CO", "BTN"]
 
