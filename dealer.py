@@ -187,7 +187,7 @@ def whowin():
         pod = min(amount)*len(player)
         display.fill(0)
         display.text('Who win pod('+str(i+1)+ "):" , 0, 0, 1)
-        display.text("pod size: 202"+str(pod) , 0, 10, 1)
+        display.text("pod size: "+str(pod) , 0, 10, 1)
         for j in range(len(player)):
             display.text(str(j+1)+" Player"+str(player[j]) , 0, 10*(j+2), 1)
             anslist.append(str(j+1))
