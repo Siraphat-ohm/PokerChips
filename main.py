@@ -9,7 +9,7 @@ import const
 from poker import PokerGame
 from config import MQTT_BROKER, MQTT_PASS, MQTT_USER, TOPIC_PREFIX, WIFI_PASS, WIFI_SSID
 
-TOPICS = ["/setting_table"]
+TOPICS = ["/setting_table","/awards"]
 
 def wait_for_setting_table():
     print("Waiting for 'setting_table' data...")
@@ -29,8 +29,6 @@ def wait_for_setting_table():
 if __name__ == "__main__":
     wifi = WiFiHandler(WIFI_SSID, WIFI_PASS)
     wifi.connect()
-    sb,bb = 0, 0
-    money = 0
 
     client = shared_mqtt.init_mqtt()
 
@@ -39,21 +37,29 @@ if __name__ == "__main__":
         shared_mqtt.subscribe_to_topic(topic)
 
     try:
-        data = wait_for_setting_table()
-
-        bb = data[0]
-        sb = bb // 2
-        money = data[1]
+        #data = wait_for_setting_table()
+        #bb, sb, money = data[0],  bb // 2, data[1]
+        bb, sb, money = 50, 25, 1000
         print("Big blind:", bb, "Small blind:", sb, "Money:", money)
         multiplexer = I2CMultiplexer(const.SCL_PIN, const.SDA_PIN)
         game = PokerGame(money=money, multiplexer=multiplexer, sb=sb, bb=bb)
-        shared_mqtt.publish_message(TOPIC_PREFIX+f"/player","2")
         for conf in const.PLAYER_CONFIG:
             print(conf)
             game.add_player(Player(multiplexer, conf['channel'], conf['joystick_pins']))
-        
-        game.run_full_game()
+        shared_mqtt.publish_message(TOPIC_PREFIX+f"/player",str(len(game.players)))
+        game.give_money()
 
+        while len([p for p in game.players if p.money > 0 ]) > 1:
+            print("\nStarting a new hand...")
+            game.run_full_game()
+            game.clean_up_for_next_hand()
+            game.players = [p for p in game.players if p.money > 0]
+            print("Remaining players:", len(game.players))
+            time.sleep(2)
+            
+        if game.players:
+            winner = game.players[0]
+            print(f"\nTournament Winner: Player on channel {winner.channel} ({winner.position}) with ${winner.money}")
     except KeyboardInterrupt:
         pass
 
