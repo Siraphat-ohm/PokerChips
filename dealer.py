@@ -23,7 +23,11 @@ TOPIC_SMALLBLIND = f'{TOPIC_PREFIX}/smallblind'
 TOPIC_BIGBLIND = f'{TOPIC_PREFIX}/bigblind'
 TOPIC_MONEY = f'{TOPIC_PREFIX}/money'
 TOPIC_PLAYER = f'{TOPIC_PREFIX}/player'
+TOPIC_POT = f'{TOPIC_PREFIX}/pot'
+TOPIC_PLAYER_REMAIN = f'{TOPIC_PREFIX}/players_remain'
+TOPIC_MONEY_ROUND = f'{TOPIC_PREFIX}/players_bet'
 TOPIC_SETTINGTABLE = f'{TOPIC_PREFIX}/setting_table'
+TOPIC_MONEYRESULT = f'{TOPIC_PREFIX}/awards'
 keypad = [
     ['1', '2', '3', 'A'],
     ['4', '5', '6', 'B'],
@@ -50,7 +54,11 @@ def connect_wifi():
 def connect_mqtt():
     print(f'Connecting to MQTT broker at {MQTT_BROKER}.')
     mqtt.connect()
-    #mqtt.set_callback(mqtt_callback)
+    mqtt.set_callback(mqtt_callback)
+    mqtt.subscribe(TOPIC_PLAYER)
+    mqtt.subscribe(TOPIC_POT)
+    mqtt.subscribe(TOPIC_PLAYER_REMAIN)
+    mqtt.subscribe(TOPIC_MONEY_ROUND)
     print('MQTT broker connected.')
     
 def pokerchippage():
@@ -73,6 +81,99 @@ def blankpage():
     sleep(1)
     display.fill(0)
     display.show()
+    
+def arrangesidepot(playerremain,moneyremain,mnot):
+    playernew = list()
+    amountnew = list()
+    mnotnew = list()
+    pod = min(moneyremain)
+    for i in range(len(playerremain)):
+        new = moneyremain[i] -pod
+        if new != 0:
+            playernew.append(playerremain[i])
+            amountnew.append(new)
+    for i in mnot:
+        check = i - pod
+        if check > 0:
+            mnotnew.append(check)
+            
+    return playernew,amountnew,mnotnew
+
+def potamount(playerremain,moneyremain,mnot):
+    rule = min(moneyremain)
+    pod = rule*len(playerremain)
+    for i in mnot:
+        print(i)
+        print(rule)
+        check = i - rule
+        print(check)
+        if check <= 0:
+            pod = pod+i
+        else:
+            pod = pod+rule
+    return pod
+            
+            
+    
+
+def whoremain(playlst):
+    anslst =[]
+    for i in playlst:
+        if i !=0:
+            anslst.append(i)
+    return anslst
+
+def monremain(playlst,moneylst):
+    anslst =[]
+    mnot =[]
+    for i in range(len(playlst)):
+        if playlst[i] !=0:
+            anslst.append(moneylst[i])
+        if playlst[i] ==0:
+            mnot.append(moneylst[i])
+    return anslst,mnot    
+        
+def whowin():
+    check =True
+    player=eval(player_remain_get)
+    amount=eval(money_round_get)
+    money_result=list()
+    for i in player:
+        money_result.append(0)
+    playerremain=whoremain(player)
+    moneyremain,mnot = monremain(player,amount)
+    anslist=list()
+    anskey = ''
+    different_count = len(set(moneyremain))
+    
+    for i in range(different_count):
+        check =True
+        display.fill(0)
+        pod = potamount(playerremain,moneyremain,mnot)
+        display.text('Who win pod('+str(i+1)+ "):" , 0, 0, 1)
+        display.text("pod size: "+str(pod) , 0, 10, 1)
+        for j in range(len(playerremain)):
+            display.text(str(j+1)+" Player"+str(playerremain[j]) , 0, 10*(j+2), 1)
+            anslist.append(str(j+1))
+        display.show()
+        while check == True:
+            anskey = ''
+            for row_index, row in enumerate(row_pins):
+                row.value(1)  # Set current row HIGH
+                for col_index, col in enumerate(col_pins):
+                    if col.value() == 1:  # If column is HIGH, key is pressed
+                        anskey = keypad[row_index][col_index]
+                        sleep(0.3)  # Debounce delay
+                row.value(0)  # Reset row to LOW
+            if anskey !="" and anskey in anslist:
+                print(anskey)
+                money_result[playerremain[int(anskey)-1]-1] += pod
+                playerremain,moneyremain,mnot = arrangesidepot(playerremain,moneyremain,mnot)
+                print(playerremain,moneyremain,mnot)
+                check =False
+                anslist = []
+    mqtt.publish(TOPIC_MONEYRESULT, str(money_result))
+
 
 def games_start():
     pokerchippage()
@@ -132,13 +233,23 @@ def games_start():
         print('round done')
     display.fill(0)
     pokerchippage()
-               
+
+player_get=''
+pot_get =''
+player_remain_get=''
+money_round_get=''
+
 def mqtt_callback(topic, payload):
-    if topic.decode() == TOPIC_LED_RED:
-        try:
-            red.value(int(payload))
-        except ValueError:
-            pass
+    global player_remain_get,money_round_get,player_get,pot_get
+    payload_str = payload.decode().strip()
+    if topic.decode() == TOPIC_PLAYER:
+            player_get=payload_str
+    if topic.decode() == TOPIC_PLAYER_REMAIN:
+            player_remain_get=payload_str
+    if topic.decode() == TOPIC_POT:
+            pot_get=payload_str
+    if topic.decode() == TOPIC_MONEY_ROUND:
+            money_round_get=payload_str
 
 wifi = network.WLAN(network.STA_IF)
 mqtt = MQTTClient(client_id='',
@@ -152,68 +263,15 @@ textt = "1000,ongame,smallblind"
 mqtt.publish(TOPIC_TEST, textt)
 
 games_start()
-
 mqtt.publish(TOPIC_BIGBLIND, str(int(listgamestart[0])))
 mqtt.publish(TOPIC_SMALLBLIND, str(int(int(listgamestart[0])/2)))
 mqtt.publish(TOPIC_MONEY, str(int(listgamestart[1])))
 mqtt.publish(TOPIC_SETTINGTABLE, "["+str(int(listgamestart[0]))+","+str(int(listgamestart[1]))+"]")
-
-
-
 while True:
-    mqtt.check_msg()
-    
-#if ans playerlastround player = [sd,sd,s,ds,] amount=[sd,sd,sd,sd,sd]
-
-def arrangesidepot(amount,player):
-    playernew = list()
-    amountnew = list()
-    pod = min(amount)
-    for i in range(len(player)):
-        new = amount[i] -pod
-        if new != 0:
-            playernew.append(player[i])
-            amountnew.append(new)
-    return playernew,amountnew
-    
-        
-def whowin():
-    check =True
-    player=[1,2,4,5]
-    amount=[100,200,200,300]
-    anslist=list()
-    anskey = ''
-    different_count = len(set(amount))
-    
-    for i in range(different_count):
-        check =True
-        pod = min(amount)*len(player)
-        display.fill(0)
-        display.text('Who win pod('+str(i+1)+ "):" , 0, 0, 1)
-        display.text("pod size: "+str(pod) , 0, 10, 1)
-        for j in range(len(player)):
-            display.text(str(j+1)+" Player"+str(player[j]) , 0, 10*(j+2), 1)
-            anslist.append(str(j+1))
-        display.show()
-        while check == True:
-            anskey = ''
-            for row_index, row in enumerate(row_pins):
-                row.value(1)  # Set current row HIGH
-                for col_index, col in enumerate(col_pins):
-                    if col.value() == 1:  # If column is HIGH, key is pressed
-                        anskey = keypad[row_index][col_index]
-                        sleep(0.3)  # Debounce delay
-                row.value(0)  # Reset row to LOW
-            if anskey !="" and anskey in anslist:
-                print(anskey)
-                player,amount = arrangesidepot(amount,player)
-                check =False
-                anslist = []
-                
-
-                
-whowin()  
-
-    
+    while money_round_get == '' or player_remain_get=='':
+        mqtt.check_msg()
+    whowin()  
+    money_round_get = ''
+    player_remain_get=''
 
     
