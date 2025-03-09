@@ -2,6 +2,7 @@ import time
 
 import shared_mqtt
 import ujson
+from logs import log
 from mqtt_handler import shared_data
 
 import const
@@ -52,16 +53,14 @@ class PokerGame:
         shared_mqtt.publish_message(TOPIC_PREFIX + "/pot", str(self.pot))
 
     def _handle_bet_raise(self, player, amount):
-        diff = amount - self.highest_bet
-        print(self.bb, self.sb, diff)
-        if diff > 0:
-            self.pot += amount
-            self.highest_bet = amount
-            player.total += amount
-            shared_mqtt.publish_message(TOPIC_PREFIX + "/pot", str(self.pot))
+
+        self.pot += amount
+        self.highest_bet = player.bet
+        print(f"[{player.position}] {player.bet}")
+        player.total += amount
+        shared_mqtt.publish_message(TOPIC_PREFIX + "/pot", str(self.pot))
 
     def post_blinds(self):
-        print("from post blinds", self.num_player)
         sb_player = self.players[(self.d_pos + 1) % self.num_player]
         bb_player = self.players[(self.d_pos + 2) % self.num_player]
         self.highest_bet = self.bb
@@ -87,7 +86,7 @@ class PokerGame:
             self.players[seat_index].position = position_abbr
 
     def awards(self, timeout=300):
-        print("Waiting for 'awards' data...")
+        log("[shared_mqtt] Waiting for 'awards' data...")
         start_time = time.time()
         while time.time() - start_time < timeout:
             shared_mqtt.check_messages()
@@ -96,15 +95,15 @@ class PokerGame:
                     data = ujson.loads(shared_data["awards"])
                     for p, m in zip(self.players, data):
                         if m > 0:
-                            print(f"Player {p.channel} wins +{m}")
+                            log(f"Player {p.channel} wins +{m}")
                             p.money += m
                     del shared_data["awards"]
                     return
                 except ValueError:
-                    print("Invalid JSON for awards. Ignoring this message.")
+                    log("Invalid JSON for awards. Ignoring this message.")
                     del shared_data["awards"]
             time.sleep(0.25)
-        print("No awards message received within the timeout.")
+        log("No awards message received within the timeout.")
 
     def give_money(self):
         for player in self.players:
@@ -115,7 +114,7 @@ class PokerGame:
             p.oled.fill(0)
 
     def clean_up_for_next_hand(self):
-        print("Cleaning for next hand")
+        log("Cleaning for next hand")
         self.pot = 0
         self.side_pots = []
         self.highest_bet = 0
@@ -153,8 +152,8 @@ class PokerGame:
 
         shared_mqtt.publish_message(TOPIC_PREFIX + f"/round_name", round_name)
         if round_name:
-            print(f"\n===== {round_name.upper()} ROUND =====")
-            print(f"Starting {round_name} with {num_active} players active.")
+            log(f"\n===== {round_name.upper()} ROUND =====")
+            log(f"Starting {round_name} with {num_active} players active.")
 
         current_index = start_index
         players_to_act = num_active
@@ -168,7 +167,7 @@ class PokerGame:
 
             player = self.players[current_index]
             self._display_inactive_players(active_players, current_index)
-            # print("players to act:", players_to_act)
+            # log("players to act:", players_to_act)
 
             action, amount = player.draw_screen(
                 pot=self.pot, highest_bet=self.highest_bet, active=True
@@ -181,7 +180,7 @@ class PokerGame:
                 TOPIC_PREFIX + f"/player{player.channel}",
                 f"{player.money},{status},{player.position},{action}",
             )
-            print(f"[{player.position}] => {action}, Amount: {amount}")
+            log(f"[{player.position}] => {action}, Amount: {amount}")
 
             if action == "Fold":
                 player.fold = True
@@ -205,7 +204,7 @@ class PokerGame:
             if len([p for p in self.players if not p.fold]) <= 1 or players_to_act <= 0:
                 break
             player_bet = [p.total for p in self.players]
-            # print("Players Bet:", player_bet)
+            # log("Players Bet:", player_bet)
             current_index = (current_index + 1) % len(self.players)
 
         self.highest_bet = 0
@@ -217,7 +216,7 @@ class PokerGame:
     def run_full_game(self):
         self.assign_position()
         self.post_blinds()
-
+        print("SUM", sum([p.money for p in self.players]) + self.pot)
         rounds = [
             (
                 "Pre-Flop",
@@ -241,7 +240,7 @@ class PokerGame:
                 winner = remaining[0]
                 winner.money += self.pot
                 winner.draw_text(f"+ ${self.pot}")
-                print(f"Player {winner.channel} wins the pot of {self.pot} by default!")
+                log(f"Player {winner.channel} wins the pot of {self.pot} by default!")
                 self.clean_up_for_next_hand()
                 return
 
@@ -249,16 +248,16 @@ class PokerGame:
         while len(player_remain) < 4:
             player_remain.append(0)
 
-        # print("Remaining Players:", player_remain)
+        # log("Remaining Players:", player_remain)
         shared_mqtt.publish_message(
             TOPIC_PREFIX + "/players_remain", str(player_remain)
         )
 
-        player_money = [p.total if not p.fold else 0 for p in self.players]
+        player_money = [p.total for p in self.players]
         while len(player_money) < 4:
             player_money.append(0)
 
-        # print("Players Money:", player_money)
+        # log("Players Money:", player_money)
         shared_mqtt.publish_message(TOPIC_PREFIX + "/players_bet", str(player_money))
 
         self.awards()

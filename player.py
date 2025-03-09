@@ -38,6 +38,7 @@ class Player:
             const.SCREEN_WIDTH, const.SCREEN_HEIGHT, self.multiplexer.i2c
         )
         # self.draw_text(f"Calibrating")
+        self.raise_bet = 0
         self.joystick = Joystick(*joystick_pins)
         self.joy_center, self.joy_deadzone = self.joystick.calibrate()
 
@@ -96,16 +97,23 @@ class Player:
                     if current_action in ("Bet", "Raise"):
                         if self.draw_bet(highest_bet, pot) == "Back":
                             continue
-                        return current_action, self.bet
+                        return current_action, self.raise_bet
 
                     elif current_action == "Raise":
                         self.draw_bet(highest_bet, pot)
-                        return current_action, self.bet
+                        print("Raise _bet", self.raise_bet)
+                        return current_action, self.raise_bet
 
                     elif current_action.startswith("Call"):
                         required_call = highest_bet - self.bet
+                        print(
+                            "Highest_bet, bet, required_call, raise_bet",
+                            highest_bet,
+                            self.bet,
+                            required_call,
+                            self.raise_bet,
+                        )
                         if required_call >= self.money:
-                            print(f"[self.position] Call ALL-IN", self.money)
                             self.bet += self.money
                             #                             self.pot += self.money
                             call_amount = self.money
@@ -181,19 +189,16 @@ class Player:
                 return selected == 0
             selected = (selected + y_dir) % 2
 
-    def draw_bet(self, min_raise=0, pot=0):
+    def draw_bet(self, min_raise=10, pot=0):
         time.sleep(0.1)
         self.multiplexer.select_channel(self.channel)
 
         min_required = min_raise
-        # If the player doesn't have enough money for a raise,
-        # then the only option is to bet all their money.
         if self.money < min_required:
             min_raise = self.money
         else:
             min_raise = max(min_raise, min_required)
 
-        # Start the bet at the minimum allowed.
         current_bet = min_raise
 
         speed = 5
@@ -250,7 +255,9 @@ class Player:
                     self.money -= current_bet
                     if self.money == 0:
                         self.allin = True
+                    print(current_bet)
                     self.bet += current_bet
+                    self.raise_bet = current_bet
                     #                     self.pot += current_bet
                     break
                 else:
