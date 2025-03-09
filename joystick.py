@@ -70,7 +70,7 @@ class Joystick:
 
 
 if __name__ == "__main__":
-    joystick1 = Joystick(x_pin=6, y_pin=7, sw_pin=12)
+    joystick1 = Joystick(x_pin=4, y_pin=5, sw_pin=7)
     # center, deadzone = joystick1.calibrate()
     while True:
         # x_dir, y_dir, sw_dir = joystick1.read_direction(center, deadzone)

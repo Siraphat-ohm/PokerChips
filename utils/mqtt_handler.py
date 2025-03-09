@@ -2,6 +2,8 @@ import time
 
 from umqtt.simple import MQTTClient
 
+shared_data = {}
+
 
 class MQTTHandler:
 
@@ -61,14 +63,11 @@ def mqtt_callback(topic_bytes, payload_bytes):
     topic_str = topic_bytes.decode().strip()
     payload_str = payload_bytes.decode().strip()
 
-    if topic_str.endswith("bigblind"):
-        print(f"[Callback] Big Blind value received: {payload_str}")
+    if topic_str.endswith("setting_table"):
+        shared_data["setting_table"] = payload_str
 
-    elif topic_str.endswith("money"):
-        print(f"[Callback] Money value received: {payload_str}")
+        print(f"[Callback] setting_table value received: {payload_str}")
+    if topic_str.endswith("awards"):
+        shared_data["awards"] = payload_str
 
-    elif topic_str.endswith("player"):
-        print(f"[Callback] Player info received: {payload_str}")
-
-    else:
-        print(f"[Callback] Unknown topic {topic_str} with payload: {payload_str}")
+        print(f"[Callback] awards value received: {payload_str}")
