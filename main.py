@@ -1,88 +1,69 @@
-#setup MQTT =======================================================
 import time
-import const
+import ujson
 from machine import Pin
+from mqtt_handler import MQTTHandler, mqtt_callback, shared_data
+from wifi_handler import WiFiHandler
 from player import I2CMultiplexer, Player
+import shared_mqtt
+import const
 from poker import PokerGame
-import network
-from config import (
-    WIFI_SSID, WIFI_PASS,
-    MQTT_BROKER, MQTT_USER, MQTT_PASS,
-    TOPIC_PREFIX
-)
-from umqtt.simple import MQTTClient
-TOPIC_BIGBLIND = f'{TOPIC_PREFIX}/bigblind'
-TOPIC_MONEY = f'{TOPIC_PREFIX}/money'
-TOPIC_PLAYER = f'{TOPIC_PREFIX}/player'
+from config import MQTT_BROKER, MQTT_PASS, MQTT_USER, TOPIC_PREFIX, WIFI_PASS, WIFI_SSID
 
-def connect_wifi():
-    mac = ':'.join(f'{b:02X}' for b in wifi.config('mac'))
-    print(f'WiFi MAC address is {mac}')
-    wifi.active(True)
-    print(f'Connecting to WiFi {WIFI_SSID}.')
-    wifi.connect(WIFI_SSID, WIFI_PASS)
-    while not wifi.isconnected():
-        print('.', end='')
-        time.sleep(0.5)
-    print('\nWiFi connected.')
+TOPICS = ["/setting_table","/awards"]
 
-def connect_mqtt():
-    print(f'Connecting to MQTT broker at {MQTT_BROKER}.')
-    mqtt.connect()
-    mqtt.set_callback(mqtt_callback)
-    mqtt.subscribe(TOPIC_BIGBLIND)
-    mqtt.subscribe(TOPIC_MONEY)
-    mqtt.subscribe(TOPIC_PLAYER)
-    print('MQTT broker connected.')
+def wait_for_setting_table():
+    print("Waiting for 'setting_table' data...")
 
-multiplexer = I2CMultiplexer(const.SCL_PIN, const.SDA_PIN)
+    while True:
+        shared_mqtt.check_messages()
+        if "setting_table" in shared_data:
+            try:
+                data = ujson.loads(shared_data["setting_table"])
+                shared_data["setting_table"] = data 
+                return data
+            except ValueError:
+                print("Invalid JSON for setting_table. Ignoring this message.")
+                del shared_data["setting_table"]
+        time.sleep(0.25)
 
-bb,sb='',''
-money =''
+if __name__ == "__main__":
+    wifi = WiFiHandler(WIFI_SSID, WIFI_PASS)
+    wifi.connect()
 
-def mqtt_callback(topic, payload):
-    global bb,money
-    topic_str = topic.decode()
-    payload_str = payload.decode().strip()
-    if topic_str == TOPIC_BIGBLIND:
-        try:
-            bb = payload_str
-            print(f"Big Blind value received: {bb}")
-        except ValueError:
-            print(f"Invalid Big Blind value received: {payload_str}")
-    if topic_str == TOPIC_MONEY:
-        try:
-            money = payload_str
-            print(f"Big Blind value received: {money}")
-        except ValueError:
-            print(f"Invalid Big Blind value received: {payload_str}")
+    client = shared_mqtt.init_mqtt()
+
+    for t in TOPICS:
+        topic = TOPIC_PREFIX + t  
+        shared_mqtt.subscribe_to_topic(topic)
+
+    try:
+        #data = wait_for_setting_table()
+        #bb, sb, money = data[0],  bb // 2, data[1]
+        bb, sb, money = 50, 25, 1000
+        print("Big blind:", bb, "Small blind:", sb, "Money:", money)
+        multiplexer = I2CMultiplexer(const.SCL_PIN, const.SDA_PIN)
+        game = PokerGame(money=money, multiplexer=multiplexer, sb=sb, bb=bb)
+        for conf in const.PLAYER_CONFIG:
+            print(conf)
+            game.add_player(Player(multiplexer, conf['channel'], conf['joystick_pins']))
+        shared_mqtt.publish_message(TOPIC_PREFIX+f"/player",str(len(game.players)))
+        game.give_money()
+
+        while len([p for p in game.players if p.money > 0 ]) > 1:
+            print("\nStarting a new hand...")
+            game.run_full_game()
+            game.clean_up_for_next_hand()
+            game.players = [p for p in game.players if p.money > 0]
+            print("Remaining players:", len(game.players))
+            time.sleep(2)
             
-wifi = network.WLAN(network.STA_IF)
-mqtt = MQTTClient(client_id='',
-                  server=MQTT_BROKER,
-                  user=MQTT_USER,
-                  password=MQTT_PASS)
-connect_wifi()
-connect_mqtt()
-last_publish = 0
+        if game.players:
+            winner = game.players[0]
+            print(f"\nTournament Winner: Player on channel {winner.channel} ({winner.position}) with ${winner.money}")
+    except KeyboardInterrupt:
+        pass
 
-check = True
-while check == True:
-    mqtt.check_msg()
-    if money:
-        check = False
-
-money=int(money)
-bb=int(bb)
-#=================================================================
-
-multiplexer = I2CMultiplexer(const.SCL_PIN, const.SDA_PIN)
-game = PokerGame(money=10000, multiplexer=multiplexer, sb=10, bb=20)
-
-for conf in const.PLAYER_CONFIG:
-    print(conf)
-    game.add_player(Player(multiplexer, conf['channel'], conf['joystick_pins']))
-    
-game.run_full_game()
-
+    finally:
+        shared_mqtt.disconnect_mqtt()
+        print("Finished.")
 
