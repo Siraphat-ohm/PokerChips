@@ -23,6 +23,10 @@ TOPIC_SMALLBLIND = f'{TOPIC_PREFIX}/smallblind'
 TOPIC_BIGBLIND = f'{TOPIC_PREFIX}/bigblind'
 TOPIC_MONEY = f'{TOPIC_PREFIX}/money'
 TOPIC_PLAYER = f'{TOPIC_PREFIX}/player'
+TOPIC_PLAYER1 = f'{TOPIC_PREFIX}/player1'
+TOPIC_PLAYER2 = f'{TOPIC_PREFIX}/player2'
+TOPIC_PLAYER3 = f'{TOPIC_PREFIX}/player3'
+TOPIC_PLAYER4 = f'{TOPIC_PREFIX}/player4'
 TOPIC_POT = f'{TOPIC_PREFIX}/pot'
 TOPIC_PLAYER_REMAIN = f'{TOPIC_PREFIX}/players_remain'
 TOPIC_MONEY_ROUND = f'{TOPIC_PREFIX}/players_bet'
@@ -59,6 +63,10 @@ def connect_mqtt():
     mqtt.subscribe(TOPIC_POT)
     mqtt.subscribe(TOPIC_PLAYER_REMAIN)
     mqtt.subscribe(TOPIC_MONEY_ROUND)
+    mqtt.subscribe(TOPIC_PLAYER1)
+    mqtt.subscribe(TOPIC_PLAYER2)
+    mqtt.subscribe(TOPIC_PLAYER3)
+    mqtt.subscribe(TOPIC_PLAYER4)
     print('MQTT broker connected.')
     
 def pokerchippage():
@@ -153,7 +161,7 @@ def whowin():
         display.text('Who win pod('+str(i+1)+ "):" , 0, 0, 1)
         display.text("pod size: "+str(pod) , 0, 10, 1)
         for j in range(len(playerremain)):
-            display.text(str(j+1)+" Player"+str(playerremain[j]) , 0, 10*(j+2), 1)
+            display.text(str(j+1)+" Player"+str(playerremain[j]) +  " " +play_pos_list[playerremain[j]-1] , 0, 10*(j+2), 1)
             anslist.append(str(j+1))
         display.show()
         while check == True:
@@ -173,6 +181,7 @@ def whowin():
                 check =False
                 anslist = []
     mqtt.publish(TOPIC_MONEYRESULT, str(money_result))
+    
 
 
 def games_start():
@@ -238,9 +247,14 @@ player_get=''
 pot_get =''
 player_remain_get=''
 money_round_get=''
+player_position1=''
+player_position2=''
+player_position3=''
+player_position4=''
+play_pos_list=list()
 
 def mqtt_callback(topic, payload):
-    global player_remain_get,money_round_get,player_get,pot_get
+    global player_remain_get,money_round_get,player_get,pot_get,player_position1,player_position2,player_position3,player_position4,play_pos_list
     payload_str = payload.decode().strip()
     if topic.decode() == TOPIC_PLAYER:
             player_get=payload_str
@@ -250,6 +264,15 @@ def mqtt_callback(topic, payload):
             pot_get=payload_str
     if topic.decode() == TOPIC_MONEY_ROUND:
             money_round_get=payload_str
+    if topic.decode() == TOPIC_PLAYER1:
+            player_position1=payload_str.split(",")[2]
+    if topic.decode() == TOPIC_PLAYER2:
+            player_position2=payload_str.split(",")[2]
+    if topic.decode() == TOPIC_PLAYER3:
+            player_position3=payload_str.split(",")[2]
+    if topic.decode() == TOPIC_PLAYER4:
+            player_position4=payload_str.split(",")[2]
+
 
 wifi = network.WLAN(network.STA_IF)
 mqtt = MQTTClient(client_id='',
@@ -270,7 +293,18 @@ mqtt.publish(TOPIC_SETTINGTABLE, "["+str(int(listgamestart[0]))+","+str(int(list
 while True:
     while money_round_get == '' or player_remain_get=='':
         mqtt.check_msg()
-    whowin()  
+    play_pos_list.append(player_position1)
+    play_pos_list.append(player_position2)
+    play_pos_list.append(player_position3)
+    play_pos_list.append(player_position4)
+    try:
+        play_pos_list.remove('')
+        play_pos_list.remove('')
+    except:
+        pass
+    whowin()
+    display.fill(0)
+    pokerchippage()
     money_round_get = ''
     player_remain_get=''
 
