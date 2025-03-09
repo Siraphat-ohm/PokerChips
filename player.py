@@ -28,16 +28,17 @@ class Player:
         self.fold = False
         self.allin = False
         self.money = 0
-        self.pot = 0
+        #         self.pot = 0
         self.bet = 0
         self.total = 0
         self.actions = []
         self.position = ""
-        self.joystick = Joystick(*joystick_pins)
         self.multiplexer.select_channel(channel)
         self.oled = ssd1306.SSD1306_I2C(
             const.SCREEN_WIDTH, const.SCREEN_HEIGHT, self.multiplexer.i2c
         )
+        # self.draw_text(f"Calibrating")
+        self.joystick = Joystick(*joystick_pins)
         self.joy_center, self.joy_deadzone = self.joystick.calibrate()
 
     def set_position(self, pos):
@@ -47,14 +48,14 @@ class Player:
         self.money = money
 
     def draw_screen(self, pot, highest_bet=0, active=False):
-        self.pot = pot
+        #         self.pot = pot
         self.multiplexer.select_channel(self.channel)
         if self.fold:
             self.draw_fold()
             return "Fold", 0
 
         if active:
-            self.draw_your_turn()
+            self.draw_text("YOUR TURN")
             time.sleep(1)
             if highest_bet == 0:
                 self.actions = ["Bet", "Check", "Fold"]
@@ -63,9 +64,15 @@ class Player:
                 if self.money <= required_call:
                     self.actions = ["Call (All-in)", "Fold"]
                 else:
-                    self.actions = ["Raise", f"Call ${required_call}", "Fold"]
+                    if highest_bet >= self.money:
+                        self.actions = [f"Call ${required_call}", "Fold"]
+                    else:
+                        self.actions = ["Raise", f"Call ${required_call}", "Fold"]
             else:
-                self.actions = ["Raise", "Check", "Fold"]
+                if highest_bet > self.money:
+                    self.actions = [f"Check", "Fold"]
+                else:
+                    self.actions = ["Raise", "Check", "Fold"]
 
             selected = 0
             while active:
@@ -87,24 +94,28 @@ class Player:
                 if sw_val == 0:
                     current_action = self.actions[selected]
                     if current_action in ("Bet", "Raise"):
-                        self.draw_bet(highest_bet)
+                        if self.draw_bet(highest_bet, pot) == "Back":
+                            continue
                         return current_action, self.bet
 
                     elif current_action == "Raise":
-                        self.draw_bet(highest_bet)
+                        self.draw_bet(highest_bet, pot)
                         return current_action, self.bet
 
                     elif current_action.startswith("Call"):
                         required_call = highest_bet - self.bet
                         if required_call >= self.money:
+                            print(f"[self.position] Call ALL-IN", self.money)
                             self.bet += self.money
-                            self.pot += self.money
+                            #                             self.pot += self.money
+                            call_amount = self.money
                             self.money = 0
                             self.allin = True
+                            return "Call", call_amount
                         else:
                             self.money -= required_call
                             self.bet += required_call
-                            self.pot += required_call
+                        #                             self.pot += required_call
                         return "Call", required_call
 
                     elif current_action == "Check":
@@ -131,11 +142,11 @@ class Player:
                 self.oled.text("Waiting...", 20, 50)
             self.oled.show()
 
-    def draw_your_turn(self):
+    def draw_text(self, text):
         time.sleep(0.1)
         self.multiplexer.select_channel(self.channel)
         self.oled.fill(0)
-        self.oled.text("YOUR TURN", 30, 20)
+        self.oled.text(text, 30, 20)
         self.oled.show()
 
     def draw_fold(self):
@@ -170,15 +181,24 @@ class Player:
                 return selected == 0
             selected = (selected + y_dir) % 2
 
-    def draw_bet(self, min_raise=0):
+    def draw_bet(self, min_raise=0, pot=0):
         time.sleep(0.1)
         self.multiplexer.select_channel(self.channel)
 
-        current_bet = min(max(min_raise, 0), self.money)
+        min_required = min_raise
+        # If the player doesn't have enough money for a raise,
+        # then the only option is to bet all their money.
+        if self.money < min_required:
+            min_raise = self.money
+        else:
+            min_raise = max(min_raise, min_required)
 
-        speed = 10
+        # Start the bet at the minimum allowed.
+        current_bet = min_raise
+
+        speed = 5
         max_speed = 100
-        acceleration = 1.1
+        acceleration = 1.7
         decay = 0.9
 
         hold_time = 0
@@ -186,7 +206,7 @@ class Player:
 
         while True:
             time.sleep(0.1)
-            x_dir, _, sw_val = self.joystick.read_direction(
+            _, x_dir, sw_val = self.joystick.read_direction(
                 self.joy_center, self.joy_deadzone
             )
             current_time = time.ticks_ms()
@@ -225,15 +245,17 @@ class Player:
             time.sleep(0.05)
 
             if sw_val == 0:
-                if self.draw_confirm(
-                    "Confirm Raise?" if min_raise > 0 else "Confirm Bet?"
-                ):
+                prompt = "Confirm Raise?" if min_raise != self.money else "Confirm Bet?"
+                if self.draw_confirm(prompt):
                     self.money -= current_bet
+                    if self.money == 0:
+                        self.allin = True
                     self.bet += current_bet
-                    self.pot += current_bet
+                    #                     self.pot += current_bet
                     break
-
-        self.draw_screen(self.pot)
+                else:
+                    return "Back"
+        self.draw_screen(pot)
 
 
 if __name__ == "__main__":

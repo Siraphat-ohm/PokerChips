@@ -1,9 +1,14 @@
 PLAYER_CONFIG = [
-    {"joystick_pins": (0,1,3), "channel": 0},
-    {"joystick_pins": (2,3,17), "channel": 1},
-    {"joystick_pins": (4,5,7), "channel": 2},
-    {"joystick_pins": (6,7,5), "channel": 3},
+    {"joystick_pins": (2, 3, 17), "channel": 1},
+    {"joystick_pins": (4, 5, 7), "channel": 2},
+    {"joystick_pins": (6, 7, 12), "channel": 3},
+    {"joystick_pins": (0, 1, 3), "channel": 4},
 ]
+
+# Analog mutiplexer conf
+SELECT_PINS = [45, 48, 47]
+Z_PIN = 11
+E_PIN = 14
 
 I2C_ADDR = 0x70
 SCL_PIN = 9

@@ -11,6 +11,26 @@ from config import MQTT_BROKER, MQTT_PASS, MQTT_USER, TOPIC_PREFIX, WIFI_PASS, W
 
 TOPICS = ["/setting_table","/awards"]
 
+def detect_player(multiplexer):
+
+    players = []
+    for config in const.PLAYER_CONFIG:
+        channel = config["channel"]
+        joystick_pins = config["joystick_pins"]
+
+        multiplexer.select_channel(channel)
+        time.sleep(0.01)  
+
+        devices = multiplexer.i2c.scan()
+
+        if const.I2C_ADDR in devices:
+            devices.remove(const.I2C_ADDR)
+
+        if devices:
+            player = Player(multiplexer, channel, joystick_pins)
+            players.append(player)
+    return players
+
 def wait_for_setting_table():
     print("Waiting for 'setting_table' data...")
 
@@ -37,18 +57,22 @@ if __name__ == "__main__":
         shared_mqtt.subscribe_to_topic(topic)
 
     try:
-        #data = wait_for_setting_table()
-        #bb, sb, money = data[0],  bb // 2, data[1]
-        bb, sb, money = 50, 25, 1000
-        print("Big blind:", bb, "Small blind:", sb, "Money:", money)
+#         data = wait_for_setting_table()
+#         bb = data[0]
+#         sb, money =   bb // 2, data[1]
+        bb, sb, money = 50, 25, 500
+        print("[SETTINGS]","Big blind:", bb, "Small blind:", sb, "Money:", money)
         multiplexer = I2CMultiplexer(const.SCL_PIN, const.SDA_PIN)
         game = PokerGame(money=money, multiplexer=multiplexer, sb=sb, bb=bb)
-        for conf in const.PLAYER_CONFIG:
-            print(conf)
-            game.add_player(Player(multiplexer, conf['channel'], conf['joystick_pins']))
+        players = detect_player(multiplexer)
+        for p in players:
+            game.add_player(p)
+#         for conf in const.PLAYER_CONFIG:
+#             print(conf)
+#             game.add_player(Player(multiplexer, conf['channel'], conf['joystick_pins']))
         shared_mqtt.publish_message(TOPIC_PREFIX+f"/player",str(len(game.players)))
         game.give_money()
-
+        game.clear_screen_players()
         while len([p for p in game.players if p.money > 0 ]) > 1:
             print("\nStarting a new hand...")
             game.run_full_game()
@@ -66,4 +90,3 @@ if __name__ == "__main__":
     finally:
         shared_mqtt.disconnect_mqtt()
         print("Finished.")
-

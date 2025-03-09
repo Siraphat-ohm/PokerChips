@@ -2,18 +2,23 @@ import time
 
 from machine import ADC, Pin
 
+import const
+
 
 class Joystick:
 
     def __init__(self, x_pin, y_pin, sw_pin, attenuation=ADC.ATTN_11DB):
-        self.select_pins = [Pin(45, Pin.OUT), Pin(48, Pin.OUT), Pin(47, Pin.OUT)]
+        # self.select_pins = [Pin(45, Pin.OUT), Pin(48, Pin.OUT), Pin(47, Pin.OUT)]
+        self.select_pins = [Pin(p, Pin.OUT) for p in const.SELECT_PINS]
         self.adc_x = x_pin
-        self.z_pin = ADC(Pin(6))
+        # self.z_pin = ADC(Pin(11))
+        self.z_pin = ADC(Pin(const.Z_PIN))
         self.z_pin.atten(ADC.ATTN_11DB)
         self.adc_y = y_pin
         self.pin_list = [self.adc_x, self.adc_y]
         self.sw_pin = Pin(sw_pin, Pin.IN, Pin.PULL_UP)
-        self.e_pin = Pin(14, Pin.OUT)
+        # self.e_pin = Pin(14, Pin.OUT)
+        self.e_pin = Pin(const.E_PIN, Pin.OUT)
 
     def set_channel(self, channel):
         for i in range(3):
@@ -36,7 +41,7 @@ class Joystick:
         xs, ys = [], []
         for _ in range(20):
             x_val, y_val, _ = self.read_raw()
-            time.sleep(0.1)
+            time.sleep(0.01)
             xs.append(x_val)
             ys.append(y_val)
         center = (sum(xs) / len(xs) + sum(ys) / len(ys)) / 2
@@ -65,17 +70,14 @@ class Joystick:
 
 
 if __name__ == "__main__":
-    e = Pin(14, Pin.OUT)
-    e.value(1)
-    joystick1 = Joystick(x_pin=0, y_pin=1, sw_pin=3)
+    joystick1 = Joystick(x_pin=4, y_pin=5, sw_pin=7)
     # center, deadzone = joystick1.calibrate()
-    e.value(0)
     while True:
         # x_dir, y_dir, sw_dir = joystick1.read_direction(center, deadzone)
         print(joystick1.read_raw())
-    #         dir_msg = []
-    #         dir_msg.append("Left" if x_dir < 0 else ("Right" if x_dir > 0 else "CenterX"))
-    #         dir_msg.append("Up" if y_dir < 0 else ("Down" if y_dir > 0 else "CenterY"))
-    #         dir_msg.append("Pressed" if sw_dir == 0 else "NotPressed")
-    #         print("Direction:", dir_msg)
-    time.sleep(0.3)
+        #         dir_msg = []
+        #         dir_msg.append("Left" if x_dir < 0 else ("Right" if x_dir > 0 else "CenterX"))
+        #         dir_msg.append("Up" if y_dir < 0 else ("Down" if y_dir > 0 else "CenterY"))
+        #         dir_msg.append("Pressed" if sw_dir == 0 else "NotPressed")
+        #         print("Direction:", dir_msg)
+        time.sleep(0.3)
