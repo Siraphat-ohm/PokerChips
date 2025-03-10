@@ -96,6 +96,7 @@ class PokerGame:
                     for p, m in zip(self.players, data):
                         if m > 0:
                             log(f"Player {p.channel} wins +{m}")
+                            p.draw_text(f"+ ${m}")
                             p.money += m
                     del shared_data["awards"]
                     return
