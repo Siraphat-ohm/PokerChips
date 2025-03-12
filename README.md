@@ -2,9 +2,9 @@
 
 ## 01204114 Introduction to Computer Hardware Development
 มหาวิทยาลัยเกษตรศาสตร์ คณะวิศวกรรมศาสตร์ ภาควิชาคอมพิวเตอร์
-- นายธิติ ทรงพลวารินทร์ 6710503992
-- นายรชตะ วัฒนานนท์  6710504298
-- นายสิรภัทร ทัพภะ    6710504409
+- นายธิติ ทรงพลวารินทร์ 6710503992 [Github](https://github.com/ThitiSo)
+- นายรชตะ วัฒนานนท์  6710504298 [Github](https://github.com/tottirct)
+- นายสิรภัทร ทัพภะ    6710504409 [Github](https://github.com/Siraphat-ohm)
 
 
 # ที่มา
