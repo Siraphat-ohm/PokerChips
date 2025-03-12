@@ -15,7 +15,8 @@
 
 # หลักการทำงาน
 
-<img src="https://raw.githubusercontent.com/Siraphat-ohm/PokerChips/refs/heads/main/img/overall.png" width="45%">
+<img src="https://raw.githubusercontent.com/Siraphat-ohm/PokerChips/refs/heads/main/img/overall.png" width="45%"><img src="https://raw.githubusercontent.com/Siraphat-ohm/PokerChips/refs/heads/main/img/Dashboard.png" width="45%">
+
 
 ## Board 1 ( Player ) 
 มีหน้าที่รับ action ของแต่ละ player ( bet, call, fold, ... ) และ แสดง chips ของ player และ pod พร้อมทั้งส่ง action ของ player ไปยัง board ของ dealer  
